@@ -18,15 +18,9 @@ def send_email(subject: str, body: str, table_html: str, image_url: str):
     message["To"] = receiver_email
 
     html = f"<p>{body}</p><br><img src='{image_url}'><br>{table_html}"
-
     html = MIMEText(html, "html")
-    # html = MIMEText(f"<p>{body}</p>", "html")
-    # image = MIMEText(f"<img src='{image_url}' width='500' height='600'>", "html")
-    # table_html = MIMEText(table_html, "html")
 
     message.attach(html)
-    # message.attach(image)
-    # message.attach(table_html)
 
     # Create a secure SSL context
     context = ssl.create_default_context()
