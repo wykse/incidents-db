@@ -1,4 +1,3 @@
-from shutil import register_archive_format
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
