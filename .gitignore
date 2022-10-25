@@ -1,3 +1,7 @@
+# other files
+*.geojson
+*.ps1
+
 # sqlite db
 *.db
 

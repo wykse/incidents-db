@@ -7,3 +7,16 @@ Duplicate rows are not inserted into the database. However, duplicate incidents 
 `python incidents_db.py`
 
 A Socrata Open Data API app token (`SODA_APP_TOKEN` in .env) is not necessary.
+
+### Sending email
+Send email with a map and table of recent incidents in area of interest(s). The map requires a Mapbox access token.
+
+Easier to install `geopandas` using conda.
+
+Activate environment, where `env` is name of conda environment.
+
+`conda activate env`
+
+Run script to find points in area of interest and send email.
+
+`python incidents.py`
