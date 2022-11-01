@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from urllib.parse import quote
 
@@ -6,9 +7,13 @@ import pandas as pd
 from decouple import config
 from sqlalchemy import create_engine
 
+from incidents_db import config_logging
 from send_email import send_email
 
 if __name__ == "__main__":
+
+    # Start logger
+    config_logging(level=logging.INFO)
 
     MAPBOX_TOKEN = config("MAPBOX_TOKEN")
     FILEPATH_DB = Path(__file__).parent / "incidents.db"
@@ -49,47 +54,63 @@ if __name__ == "__main__":
     # Get most recent appended incidents for each area of interest
     for aoi in aoi_list:
         temp_aoi = geopandas.read_file(aoi)
-        recent_aoi = geopandas.overlay(recent_gdf, temp_aoi, how="intersection")
+        # Intersect incidents with coordinates and aoi
+        recent_aoi = geopandas.overlay(recent_gdf.loc[recent_gdf["geometry"].notna()], temp_aoi, how="intersection")
+        logging.info(f"Incidents in {aoi.stem}: {len(recent_aoi)}")
 
-        # Add marker color
-        for incident_type in marker.keys():
-            recent_aoi.loc[
-                recent_aoi["crimetype"].str.contains(
-                    incident_type, case=False, na=False
-                ),
-                "marker-color",
-            ] = marker[incident_type]["color"]
+        # If there are incidents, prepare email
+        if len(recent_aoi) > 0:
+            # Add marker color
+            for incident_type in marker.keys():
+                recent_aoi.loc[
+                    recent_aoi["crimetype"].str.contains(
+                        incident_type, case=False, na=False
+                    ),
+                    "marker-color",
+                ] = marker[incident_type]["color"]
 
-        recent_aoi["marker-symbol"] = range(1, len(recent_aoi) + 1)
-        recent_aoi["marker-symbol"] = recent_aoi["marker-symbol"].astype(str)
+            recent_aoi["marker-symbol"] = range(1, len(recent_aoi) + 1)
+            recent_aoi["marker-symbol"] = recent_aoi["marker-symbol"].astype(str)
 
-        # Construct url
-        # Filter for select columns
-        geojson = recent_aoi[
-            [
-                "marker-color",
-                "marker-symbol",
-                "geometry",
+            # Construct url
+            # Filter for select columns
+            geojson = recent_aoi[
+                [
+                    "marker-color",
+                    "marker-symbol",
+                    "geometry",
+                ]
+            ].to_json(drop_id=True)
+
+            url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/geojson({quote(geojson)})/auto/900x900?access_token={MAPBOX_TOKEN}"
+
+            # Send email
+            email_recent = recent_aoi[
+                [
+                    "marker-symbol",
+                    "casenumber",
+                    "crimetype",
+                    "datetime",
+                    "description",
+                    "address",
+                ]
             ]
-        ].to_json(drop_id=True)
 
-        url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/geojson({quote(geojson)})/auto/900x900?access_token={MAPBOX_TOKEN}"
+            try:
+                send_email(
+                    subject="Incidents",
+                    body=aoi.stem,
+                    table_html=email_recent.to_html(index=False),
+                    image_url=url,
+                )
+                logging.info(
+                    f"Successfully sent email for {aoi.stem} and {len(recent_aoi)} incidents."
+                )
+            except:
+                logging.info(
+                    f"Failed to send email for {aoi.stem} and {len(recent_aoi)} incidents."
+                )
 
-        # Send email
-        email_recent = recent_aoi[
-            [
-                "marker-symbol",
-                "casenumber",
-                "crimetype",
-                "datetime",
-                "description",
-                "address",
-            ]
-        ]
-
-        send_email(
-            subject="Incidents",
-            body=aoi.stem,
-            table_html=email_recent.to_html(index=False),
-            image_url=url,
-        )
+        # No incident(s)
+        else:
+            logging.info(f"No email sent because no incidents for {aoi.stem}.")

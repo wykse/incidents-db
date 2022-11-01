@@ -49,9 +49,9 @@ def get_engine(url: str):
     return create_engine(url, echo=True, future=True)
 
 
-def config_logging():
+def config_logging(level=logging.DEBUG):
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=level,
         filename="incidents.log",
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     )
