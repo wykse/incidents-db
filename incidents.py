@@ -113,4 +113,6 @@ if __name__ == "__main__":
 
         # No incident(s)
         else:
-            logging.info(f"No email sent because no incidents for {aoi.stem}.")
+            send_email(subject=f"No incidents for {aoi.stem}", body=aoi.stem, table_html=None, image_url=None)
+            logging.info(f"No incidents for {aoi.stem}.")
+            
